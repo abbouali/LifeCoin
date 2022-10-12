@@ -1,0 +1,22 @@
+{
+  "name": "lifc",
+  "version": "1.0.0",
+  "description": "lifestory coin",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Abderrahmane Bouali",
+  "license": "MIT",
+  "keywords": [
+    "lifc",
+    "lifestory",
+    "coin"
+  ],
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.7.3"
+  }
+}
