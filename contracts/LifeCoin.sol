@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Capped.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./EIP2612/IEIP2612.sol";
@@ -14,8 +14,16 @@ import "./EIP712/EIP712.sol";
  * @title LifeCoin
  * LifeCoin - Lifestory token contract (LIFC)
  */
-contract LifeCoin is ERC20, EIP712, IEIP2612, Ownable {
+contract LifeCoin is ERC20Capped, EIP712, IEIP2612, Ownable {
     using Counters for Counters.Counter;
+    
+    //1000000000 is the max quantity of LIFC mint (10**18 is the decimal)
+    uint256 constant MAX_LIFC_SUPPLY = 1000000000 * 10**18;
+
+    // address of first Vesting contract 
+    address vestingAddress = address(0);
+    // address of second Vesting contract
+    address vestingTwoAddress = address(0);
 
     // allow or disable permit
     bool public allowPermit = true;
@@ -32,14 +40,19 @@ contract LifeCoin is ERC20, EIP712, IEIP2612, Ownable {
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     /**
+     * @dev Modifier to check if the sender is a Vesting Contract
+     */
+    modifier onlyVestingContract() {
+        require(msg.sender == vestingAddress || msg.sender == vestingTwoAddress, "LIFC: caller is not a Vesting Contract");
+        _;
+    }
+
+    /**
      * @dev constructor of LifeCoin 
      * @dev initializes the {EIP712} domain separator using the `name` parameter, and setting `version` to `"1"`.
      * @dev initializes the {ERC20} using the `name` and `symbol` parameter
-     * @dev 1000000000 is the quantity of LIFC to mint
      */
-    constructor() ERC20("LIFC", "LifeCoin") EIP712("LifeCoin", "1") {
-        _mint(msg.sender, 1000000000 * 10**uint(decimals()));
-    }
+    constructor() ERC20("LIFC", "LifeCoin") ERC20Capped(MAX_LIFC_SUPPLY) EIP712("LifeCoin", "1") {}
 
     /**
      * @notice view function to get the domain separator for the EIP712 structure
@@ -148,5 +161,32 @@ contract LifeCoin is ERC20, EIP712, IEIP2612, Ownable {
      */
     function setAllowClaiming(bool _allow) public onlyOwner {
         allowClaim = _allow;
+    }
+
+    /**
+     * @dev onlyOwner function to set Vesting Contract address only once
+     * @param _vesting address Contract  
+     */
+    function setVestingAddress(address _vesting) public onlyOwner {
+        require(vestingAddress == address(0), "LIFC: Vesting Address already set");
+        vestingAddress = _vesting;
+    }
+
+    /**
+     * @dev onlyOwner function to set Vesting Two Contract address only once
+     * @param _vesting address of Contract  
+     */
+    function setVestingTwoAddress(address _vesting) public onlyOwner {
+        require(vestingTwoAddress == address(0), "LIFC: Vesting Two Address already set");
+        vestingTwoAddress = _vesting;
+    }
+
+     /**
+     * @dev onlyVestingContract function to create new coins up to the max cap
+     * @param _to address receiving the coins  
+     * @param _amount amount of coins to mint  
+     */
+    function mint(address _to, uint256 _amount) external onlyVestingContract {
+        _mint(_to, _amount);
     }
 }
