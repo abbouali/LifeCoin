@@ -21,9 +21,7 @@ contract LifeCoin is ERC20Capped, EIP712, IEIP2612, Ownable {
     uint256 constant MAX_LIFC_SUPPLY = 1000000000 * 10**18;
 
     // address of first Vesting contract 
-    address vestingAddress = address(0);
-    // address of second Vesting contract
-    address vestingTwoAddress = address(0);
+    address public vestingAddress = address(0);
 
     // allow or disable permit
     bool public allowPermit = true;
@@ -43,7 +41,7 @@ contract LifeCoin is ERC20Capped, EIP712, IEIP2612, Ownable {
      * @dev Modifier to check if the sender is a Vesting Contract
      */
     modifier onlyVestingContract() {
-        require(msg.sender == vestingAddress || msg.sender == vestingTwoAddress, "LIFC: caller is not a Vesting Contract");
+        require(msg.sender == vestingAddress, "LIFC: caller is not a Vesting Contract");
         _;
     }
 
@@ -170,15 +168,6 @@ contract LifeCoin is ERC20Capped, EIP712, IEIP2612, Ownable {
     function setVestingAddress(address _vesting) public onlyOwner {
         require(vestingAddress == address(0), "LIFC: Vesting Address already set");
         vestingAddress = _vesting;
-    }
-
-    /**
-     * @dev onlyOwner function to set Vesting Two Contract address only once
-     * @param _vesting address of Contract  
-     */
-    function setVestingTwoAddress(address _vesting) public onlyOwner {
-        require(vestingTwoAddress == address(0), "LIFC: Vesting Two Address already set");
-        vestingTwoAddress = _vesting;
     }
 
      /**
