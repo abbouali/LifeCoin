@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./EIP2612/IEIP2612.sol";
 import "./EIP712/EIP712.sol";
+import "./ILifeCoin.sol";
 
 // @author: Abderrahmane Bouali for Lifestory
 
@@ -14,9 +15,9 @@ import "./EIP712/EIP712.sol";
  * @title LifeCoin
  * LifeCoin - Lifestory token contract (LIFC)
  */
-contract LifeCoin is ERC20Capped, EIP712, IEIP2612, Ownable {
+contract LifeCoin is ILifeCoin, ERC20Capped, EIP712, IEIP2612, Ownable {
     using Counters for Counters.Counter;
-    
+
     //1000000000 is the max quantity of LIFC mint (10**18 is the decimal)
     uint256 constant MAX_LIFC_SUPPLY = 1000000000 * 10**18;
 
@@ -175,7 +176,7 @@ contract LifeCoin is ERC20Capped, EIP712, IEIP2612, Ownable {
      * @param _to address receiving the coins  
      * @param _amount amount of coins to mint  
      */
-    function mint(address _to, uint256 _amount) external onlyVestingContract {
+    function mint(address _to, uint256 _amount) override external onlyVestingContract {
         _mint(_to, _amount);
     }
 }
