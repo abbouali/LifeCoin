@@ -20,7 +20,7 @@ contract LifestoryVesting is Ownable, ReentrancyGuard {
     
     struct Beneficiary {
         uint256 cliff;
-        uint256 duration;
+        uint256 vesting;
         uint256 amountTotal;
         uint256 released;
         uint256 firstBenefit;
@@ -62,14 +62,14 @@ contract LifestoryVesting is Ownable, ReentrancyGuard {
      * @param _amount total amount of tokens to be released at the end of the vesting
      * @param _firstBenefit amount of tokens released at the begin of the vesting
      * @param _cliff_day duration in days of the cliff after which tokens will begin to vest
-     * @param _duration_day duration in days of the period in which the tokens will vest
+     * @param _vesting_day duration in days of the period in which the tokens will vest
      */
     function createBeneficiary(
         address _beneficiary,
         uint256 _amount,
         uint256 _firstBenefit,
         uint256 _cliff_day,
-        uint256 _duration_day
+        uint256 _vesting_day
     ) public onlyOwner {
         require(
             totalToRelease.add(_amount)  <= MAX_RELEASED,
@@ -83,12 +83,12 @@ contract LifestoryVesting is Ownable, ReentrancyGuard {
             beneficiaries[_beneficiary].amountTotal  < 1,
             "LifestoryVesting: already a beneficiary"
         );
-        require(_duration_day > 0, "LifestoryVesting: duration must be > 0 days");
+        require(_vesting_day > 0, "LifestoryVesting: duration must be > 0 days");
         require(_amount > 0, "LifestoryVesting: amount must be > 0");
 
         beneficiaries[_beneficiary] = Beneficiary(
             _cliff_day.mul(dayTime),
-            _duration_day.mul(dayTime),
+            _vesting_day.mul(dayTime),
             _amount,
             0,
             _firstBenefit
@@ -104,17 +104,17 @@ contract LifestoryVesting is Ownable, ReentrancyGuard {
         uint256[] memory _amount,
         uint256[] memory _firstBenefit,
         uint256[] memory _cliff_day,
-        uint256[] memory _duration_day
+        uint256[] memory _vesting_day
     ) public onlyOwner {
         require(
             _beneficiary.length == _amount.length
              && _amount.length == _firstBenefit.length
              && _amount.length == _cliff_day.length
-             && _amount.length == _duration_day.length,
+             && _amount.length == _vesting_day.length,
             "LifestoryVesting: length not equal"
         );
         for (uint256 i = 0; i < _beneficiary.length; i++) {
-            createBeneficiary(_beneficiary[i], _amount[i], _firstBenefit[i], _cliff_day[i], _duration_day[i]);
+            createBeneficiary(_beneficiary[i], _amount[i], _firstBenefit[i], _cliff_day[i], _vesting_day[i]);
         }    
     }
 
@@ -148,10 +148,10 @@ contract LifestoryVesting is Ownable, ReentrancyGuard {
 
         if (_currentTime < startedTime.add(beneficiary.cliff)){
             return beneficiary.firstBenefit.sub(beneficiary.released); 
-        } else if (_currentTime >= startedTime.add(beneficiary.duration).add(beneficiary.cliff)) {
+        } else if (_currentTime >= startedTime.add(beneficiary.vesting).add(beneficiary.cliff)) {
             return beneficiary.amountTotal.sub(beneficiary.released);
         } else {
-            uint256 amountPerSeconds = (beneficiary.amountTotal.sub(beneficiary.firstBenefit)).div(beneficiary.duration);
+            uint256 amountPerSeconds = (beneficiary.amountTotal.sub(beneficiary.firstBenefit)).div(beneficiary.vesting);
             uint256 deltaPerSeconds = _currentTime.sub(startedTime.add(beneficiary.cliff));
             uint256 amount = (deltaPerSeconds.mul(amountPerSeconds)).add(beneficiary.firstBenefit);
             return amount.sub(beneficiary.released);

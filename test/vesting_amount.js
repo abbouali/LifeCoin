@@ -8,14 +8,14 @@ const MAX_RELEASED = 1000000000n*10n**18n;
 const STEP = 10;
 const NB_FAKE_BENEFICIARY = 5;
 
-function getReleasable(start, currentTime, amount, firstBenefit, cliff, duration) {
+function getReleasable(start, currentTime, amount, firstBenefit, cliff, vesting) {
   if (currentTime < start + cliff){
       return firstBenefit; 
-  } else if (currentTime >= start + duration + cliff) {
+  } else if (currentTime >= start + vesting + cliff) {
       return amount;
   } else {
       let rest = amount-firstBenefit; 
-      let amountPerSeconds =  rest / duration;
+      let amountPerSeconds =  rest / vesting;
       let deltaPerSeconds = currentTime - (start+cliff);
       return deltaPerSeconds*amountPerSeconds + firstBenefit;
   }
@@ -39,12 +39,12 @@ contract("LifestoryVesting Amount", (accounts) => {
   let totalReleased = 0n;
 
   class Beneficiary {
-    constructor(address, amount, firstBenefit, cliffDay, durationDay, tokenReleaseByTime) {
+    constructor(address, amount, firstBenefit, cliffDay, vestingDay, tokenReleaseByTime) {
       this.address = address;
       this.amount = amount;
       this.firstBenefit = firstBenefit;
       this.cliffDay = cliffDay;
-      this.durationDay = durationDay;
+      this.vestingDay = vestingDay;
       this.tokenReleaseByTime = tokenReleaseByTime;
     }
   }
@@ -61,7 +61,7 @@ contract("LifestoryVesting Amount", (accounts) => {
         amount = 1000n*DECIMAL,
         firstBenefit = 200n*DECIMAL,
         cliffDay = 5n,
-        durationDay = 5n,
+        vestingDay = 5n,
         tokenReleaseByTime = { 0: 200n*DECIMAL, 432000: 200n*DECIMAL, 432001: (200n*DECIMAL)+1851851851851851n, 648000: 599999999999999816000n, 864000: 1000n*DECIMAL}
       ),
       new Beneficiary(
@@ -69,7 +69,7 @@ contract("LifestoryVesting Amount", (accounts) => {
         amount = 900n*DECIMAL,
         firstBenefit = 100n*DECIMAL,
         cliffDay = 5n,
-        durationDay = 4n,
+        vestingDay = 4n,
         tokenReleaseByTime = { 0: 100n*DECIMAL, 432000: 100n*DECIMAL, 432001: (100n*DECIMAL)+2314814814814814n, 648000: 599999999999999824000n, 691200: 699999999999999788800n, 777599: 899997685185184903586n, 777600: 900n*DECIMAL}
       ),
       new Beneficiary(
@@ -77,7 +77,7 @@ contract("LifestoryVesting Amount", (accounts) => {
         amount = 1100n*DECIMAL,
         firstBenefit = 100n*DECIMAL,
         cliffDay = 1n,
-        durationDay = 5n,
+        vestingDay = 5n,
         tokenReleaseByTime = {0: 100n*DECIMAL, 86400: 100n*DECIMAL, 86401: (100n*DECIMAL)+2314814814814814n,  172800: 299999999999999929600n, 345600: 699999999999999788800n, 518399: 1099997685185184833186n, 1000000: 1100n*DECIMAL}
       ),
       new Beneficiary(
@@ -85,14 +85,14 @@ contract("LifestoryVesting Amount", (accounts) => {
         amount = 1000000n*DECIMAL,
         firstBenefit = 0n*DECIMAL,
         cliffDay = 30n,
-        durationDay = 365n*3n
+        vestingDay = 365n*3n
       ),
       new Beneficiary(
         address = accounts[5],
         amount = 2000000n*DECIMAL,
         firstBenefit = 2000000n*DECIMAL,
         cliffDay = 0n,
-        durationDay = 1n
+        vestingDay = 1n
       )
     ];
     console.log("Address LifeCoin:", lifeCoin.address);
@@ -106,16 +106,16 @@ contract("LifestoryVesting Amount", (accounts) => {
     let amountBatch = [];
     let firstBenefitBatch = [];
     let cliffBatch = [];
-    let durationBatch = [];
+    let vestingBatch = [];
     for (i = 0; i < beneficiaries.length; i++) {
       beneficiaryBatch.push(beneficiaries[i].address);
       amountBatch.push(beneficiaries[i].amount);
       firstBenefitBatch.push(beneficiaries[i].firstBenefit);
       cliffBatch.push(beneficiaries[i].cliffDay);
-      durationBatch.push(beneficiaries[i].durationDay);
+      vestingBatch.push(beneficiaries[i].vestingDay);
       totalReleased += beneficiaries[i].amount;
     }
-    await lifestoryVesting.createBeneficiaryBatch(beneficiaryBatch, amountBatch, firstBenefitBatch, cliffBatch, durationBatch, { from: admin });
+    await lifestoryVesting.createBeneficiaryBatch(beneficiaryBatch, amountBatch, firstBenefitBatch, cliffBatch, vestingBatch, { from: admin });
   });
   
   it("HardCode Value: Check amount releasable", async () => {
@@ -127,7 +127,7 @@ contract("LifestoryVesting Amount", (accounts) => {
         assert.equal(numberReleasable, _nbToken, `Beneficiaries ${i} - time: ${_time} - nbToken: ${_nbToken} - StartedTime: ${startedTime} - address ${beneficiaries[i].address}`);
 
         //Confirme with JS Algo  getReleasable is same result
-        let numberReleasableFromJS = getReleasable(startedTime, BigInt(startedTime)+BigInt(_time), beneficiaries[i].amount, beneficiaries[i].firstBenefit, beneficiaries[i].cliffDay*ND_SEC_IN_DAY, beneficiaries[i].durationDay*ND_SEC_IN_DAY).toString()
+        let numberReleasableFromJS = getReleasable(startedTime, BigInt(startedTime)+BigInt(_time), beneficiaries[i].amount, beneficiaries[i].firstBenefit, beneficiaries[i].cliffDay*ND_SEC_IN_DAY, beneficiaries[i].vestingDay*ND_SEC_IN_DAY).toString()
         assert.equal(numberReleasableFromJS, _nbToken, `ALGO JS getReleasable : Beneficiaries ${i} time: ${_time}`, numberReleasableFromJS);
       }
     }
@@ -136,8 +136,8 @@ contract("LifestoryVesting Amount", (accounts) => {
   it(`Random Value: Check amount releasable (${STEP}STEP)`, async () => {
     for (i = 0; i < beneficiaries.length; i++) {
       for (j=0; j < STEP; j++) {
-        _time = getRandomBigIntInclusive(0n,beneficiaries[i].durationDay*ND_SEC_IN_DAY + 5n*ND_SEC_IN_DAY);
-        let numberReleasableFromJS = getReleasable(startedTime, BigInt(startedTime)+BigInt(_time), beneficiaries[i].amount, beneficiaries[i].firstBenefit, beneficiaries[i].cliffDay*ND_SEC_IN_DAY, beneficiaries[i].durationDay*ND_SEC_IN_DAY).toString()
+        _time = getRandomBigIntInclusive(0n,beneficiaries[i].vestingDay*ND_SEC_IN_DAY + 5n*ND_SEC_IN_DAY);
+        let numberReleasableFromJS = getReleasable(startedTime, BigInt(startedTime)+BigInt(_time), beneficiaries[i].amount, beneficiaries[i].firstBenefit, beneficiaries[i].cliffDay*ND_SEC_IN_DAY, beneficiaries[i].vestingDay*ND_SEC_IN_DAY).toString()
         
         let numberReleasable = (await lifestoryVesting.getAmountReleasable(beneficiaries[i].address, startedTime+_time, { from: beneficiaries[i].address })).toString();
         assert.equal(numberReleasable, numberReleasableFromJS, `Beneficiaries ${i} - time: ${_time} - numberReleasableFromJS: ${numberReleasableFromJS} - StartedTime: ${startedTime} - address ${beneficiaries[i].address}`);
@@ -156,15 +156,15 @@ contract("LifestoryVesting Amount", (accounts) => {
         amount = amount_wei,
         firstBenefit = getRandomBigIntInclusive(0n,amount_wei),
         cliffDay = getRandomBigIntInclusive(0n,365n*5n),
-        durationDay = getRandomBigIntInclusive(0n,365n*5n)
+        vestingDay = getRandomBigIntInclusive(0n,365n*5n)
       )
       
-      await lifestoryVesting.createBeneficiary(randomBeneficiary.address, randomBeneficiary.amount, randomBeneficiary.firstBenefit, randomBeneficiary.cliffDay, randomBeneficiary.durationDay, { from: admin });
+      await lifestoryVesting.createBeneficiary(randomBeneficiary.address, randomBeneficiary.amount, randomBeneficiary.firstBenefit, randomBeneficiary.cliffDay, randomBeneficiary.vestingDay, { from: admin });
       totalReleased+= amount_wei;
 
       for (j=0; j < STEP; j++) {
-        _time = getRandomBigIntInclusive(0n,randomBeneficiary.durationDay*ND_SEC_IN_DAY + 5n*ND_SEC_IN_DAY);
-        let numberReleasableFromJS = getReleasable(startedTime, BigInt(startedTime)+BigInt(_time), randomBeneficiary.amount, randomBeneficiary.firstBenefit, randomBeneficiary.cliffDay*ND_SEC_IN_DAY, randomBeneficiary.durationDay*ND_SEC_IN_DAY).toString()
+        _time = getRandomBigIntInclusive(0n,randomBeneficiary.vestingDay*ND_SEC_IN_DAY + 5n*ND_SEC_IN_DAY);
+        let numberReleasableFromJS = getReleasable(startedTime, BigInt(startedTime)+BigInt(_time), randomBeneficiary.amount, randomBeneficiary.firstBenefit, randomBeneficiary.cliffDay*ND_SEC_IN_DAY, randomBeneficiary.vestingDay*ND_SEC_IN_DAY).toString()
         
         let numberReleasable = (await lifestoryVesting.getAmountReleasable(randomBeneficiary.address, startedTime+_time, { from: randomBeneficiary.address })).toString();
         assert.equal(numberReleasable, numberReleasableFromJS, `Beneficiaries ${i} - time: ${_time} - numberReleasableFromJS: ${numberReleasableFromJS} - StartedTime: ${startedTime} - address ${randomBeneficiary.address}`);
@@ -179,10 +179,10 @@ contract("LifestoryVesting Amount", (accounts) => {
       amount = amount_wei,
       firstBenefit = getRandomBigIntInclusive(0n,amount_wei),
       cliffDay = getRandomBigIntInclusive(0n,365n*5n),
-      durationDay = getRandomBigIntInclusive(1n,365n*5n)
+      vestingDay = getRandomBigIntInclusive(1n,365n*5n)
     )
     
-    await catchRevert(lifestoryVesting.createBeneficiary(overflowBeneficiary.address, overflowBeneficiary.amount, overflowBeneficiary.firstBenefit, overflowBeneficiary.cliffDay, overflowBeneficiary.durationDay, { from: admin }), "can create beneficiary with overflow");
+    await catchRevert(lifestoryVesting.createBeneficiary(overflowBeneficiary.address, overflowBeneficiary.amount, overflowBeneficiary.firstBenefit, overflowBeneficiary.cliffDay, overflowBeneficiary.vestingDay, { from: admin }), "can create beneficiary with overflow");
   });
 
   it(`Last Beneficiary: Fill the maximum of released`, async () => {   
@@ -193,10 +193,10 @@ contract("LifestoryVesting Amount", (accounts) => {
       amount = amount_wei,
       firstBenefit = getRandomBigIntInclusive(0n,amount_wei),
       cliffDay = getRandomBigIntInclusive(0n,365n*5n),
-      durationDay = getRandomBigIntInclusive(1n,365n*5n)
+      vestingDay = getRandomBigIntInclusive(1n,365n*5n)
     )
     
-    await lifestoryVesting.createBeneficiary(lastBeneficiary.address, lastBeneficiary.amount, lastBeneficiary.firstBenefit, lastBeneficiary.cliffDay, lastBeneficiary.durationDay, { from: admin });
+    await lifestoryVesting.createBeneficiary(lastBeneficiary.address, lastBeneficiary.amount, lastBeneficiary.firstBenefit, lastBeneficiary.cliffDay, lastBeneficiary.vestingDay, { from: admin });
   });
 
 

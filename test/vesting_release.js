@@ -7,7 +7,7 @@ const ND_SEC_IN_DAY = 5;
 const DECIMAL = 1;
 
 contract("LifestoryVesting Release", (accounts) => {
-  let admin, lifestoryVesting, startedTime, beneficiary, amount, firstBenefit, cliffDay, durationDay;
+  let admin, lifestoryVesting, startedTime, beneficiary, amount, firstBenefit, cliffDay, vestingDay;
 
   it(`Init LifestoryVesting with ${ND_SEC_IN_DAY}sec is 1 day`, async () => {
     admin = accounts[0];
@@ -19,7 +19,7 @@ contract("LifestoryVesting Release", (accounts) => {
     amount = 900 * DECIMAL;
     firstBenefit = 100;
     cliffDay = 5;
-    durationDay = 4;
+    vestingDay = 4;
     console.log("Address LifeCoin:", lifeCoin.address);
     console.log("Address Vesting:", lifestoryVesting.address);
     console.log("Started time:", startedTime);
@@ -27,11 +27,11 @@ contract("LifestoryVesting Release", (accounts) => {
   });
 
   it("Create Beneficary", async () => {
-    await lifestoryVesting.createBeneficiary(beneficiary, amount, firstBenefit, cliffDay, durationDay, { from: admin });
+    await lifestoryVesting.createBeneficiary(beneficiary, amount, firstBenefit, cliffDay, vestingDay, { from: admin });
   });
 
   it("Try create same Beneficary", async () => {
-    await catchRevert(lifestoryVesting.createBeneficiary(beneficiary, amount, firstBenefit, cliffDay, durationDay, { from: admin }), "can create same beneficiary in double");
+    await catchRevert(lifestoryVesting.createBeneficiary(beneficiary, amount, firstBenefit, cliffDay, vestingDay, { from: admin }), "can create same beneficiary in double");
   });
 
   it("Try create Beneficary with null values", async () => {
