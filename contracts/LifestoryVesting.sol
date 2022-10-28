@@ -58,6 +58,7 @@ contract LifestoryVesting is Ownable, ReentrancyGuard {
 
     /**
      * @dev onlyOwner function to create a new beneficiary for a vesting.
+     * @notice the distribution of tokens is implemented as stated in the whitepaper
      * @param _beneficiary address of the beneficiary to whom vested tokens are transferred
      * @param _amount total amount of tokens to be released at the end of the vesting
      * @param _firstBenefit amount of tokens released at the begin of the vesting
